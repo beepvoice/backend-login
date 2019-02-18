@@ -2,6 +2,15 @@
 
 Beep backend handling login. For now, just a POST endpoint returning a JWT. In the furture, SMS-based perpetual login.
 
+## Environment variables
+
+Supply environment variables by either exporting them or editing ```.env```.
+
+| ENV | Description | Default |
+| ---- | ----------- | ------- |
+| LISTEN | Host and port number to listen on | :8080 |
+| SECRET | JWT secret | secret |
+
 ## API (temporary)
 
 ```

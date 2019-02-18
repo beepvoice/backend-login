@@ -2,10 +2,11 @@ package main
 
 import (
   "encoding/json"
-  "flag"
   "log"
   "net/http"
+  "os"
 
+  "github.com/joho/godotenv"
   "github.com/julienschmidt/httprouter"
   "github.com/dgrijalva/jwt-go"
 )
@@ -14,11 +15,13 @@ var listen string
 var secret []byte
 
 func main() {
-  var s string
-  // Parse flags
-	flag.StringVar(&listen, "listen", ":8080", "host and port to listen on")
-  flag.StringVar(&s, "secret", "secret", "JWT secret")
-  flag.Parse()
+  // Load .env
+  err := godotenv.Load()
+  if err != nil {
+    log.Fatal("Error loading .env file")
+  }
+  listen = os.Getenv("LISTEN")
+  s := os.Getenv("SECRET")
 
   secret = []byte(s)
 
