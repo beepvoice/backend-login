@@ -36,8 +36,8 @@ func main() {
 }
 
 type LoginData struct {
-  ID string `json:"id"`
-  Client string `json:"client"`
+  ID string `json:"userid"`
+  Client string `json:"clientid"`
 }
 
 func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -50,8 +50,8 @@ func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	}
 
   token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims {
-    "id": login.ID,
-    "client": login.Client,
+    "userid": login.ID,
+    "clientid": login.Client,
   })
 
   tokenString, err := token.SignedString(secret)
