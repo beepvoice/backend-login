@@ -7,6 +7,7 @@ import (
   "encoding/hex"
   "encoding/json"
   "fmt"
+  "io"
   "log"
   "math/big"
   "net/http"
@@ -29,6 +30,9 @@ var redisHost string
 var secret []byte
 var ttl time.Duration
 var messagingSID string
+
+var dummyToken string
+var coreURL string
 
 var twilioSID string
 var twilioToken string
@@ -56,6 +60,9 @@ func main() {
   twilioSID = os.Getenv("TWILIO_SID")
   twilioToken = os.Getenv("TWILIO_TOKEN")
 
+  dummyToken = "{\"userid\":\"dummy\",\"clientid\":\"dummy\"}"
+  coreURL = os.Getenv("CORE_URL")
+
   // Postgres
   log.Printf("connecting to postgres %s", postgres)
   db, err = sql.Open("postgres", postgres)
@@ -77,6 +84,7 @@ func main() {
   router.POST("/login", Login);
   router.POST("/init", InitRequest)
   router.POST("/verify", VerifyCode)
+  router.POST("/register", CreateUser)
 
   // Start server
   log.Printf("starting server on %s", listen)
@@ -236,6 +244,7 @@ func VerifyCode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
   tokenString, err := token.SignedString(secret)
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    return
   }
 
   w.Write([]byte(tokenString))
@@ -263,7 +272,38 @@ func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
   tokenString, err := token.SignedString(secret)
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    return
   }
 
   w.Write([]byte(tokenString))
+}
+
+func CreateUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+  proxyReq, err := http.NewRequest(r.Method, coreURL, r.Body)
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    return
+  }
+
+  proxyReq.Header.Set("X-User-Claim", dummyToken)
+  for header, values := range r.Header {
+    for _, value := range values {
+      proxyReq.Header.Add(header, value)
+    }
+  }
+
+  client := &http.Client{}
+  proxyRes, err := client.Do(proxyReq)
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    return
+  }
+
+  for header, values := range proxyRes.Header {
+    for _, value := range values {
+      w.Header().Add(header, value)
+    }
+  }
+  io.Copy(w, proxyRes.Body)
+  proxyRes.Body.Close()
 }
