@@ -84,7 +84,7 @@ func main() {
   router.POST("/login", Login);
   router.POST("/init", InitRequest)
   router.POST("/verify", VerifyCode)
-  router.POST("/register", CreateUser)
+  router.POST("/register/:code/:nonce", CreateUser)
 
   // Start server
   log.Printf("starting server on %s", listen)
@@ -279,6 +279,21 @@ func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func CreateUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+  code := p.ByName("code")
+  nonce := p.ByName("nonce")
+
+  // Get nonce
+  storedNonce, err := redisClient.Get(code + "nonce").Result()
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+  }
+
+  if nonce != storedNonce {
+    http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+  }
+
   proxyReq, err := http.NewRequest(r.Method, coreURL, r.Body)
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

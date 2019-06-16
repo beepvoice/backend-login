@@ -117,10 +117,17 @@ JWT token.
 ### Register User
 
 ```
-POST /register
+POST /register/:code/:nonce
 ```
 
-Register a new user. Proxies `core`'s CreateUser endpoint, adding in a dummy token. Admittedly not the most secure implementation ever, but sue me it's 3AM now.
+Register a new user. Proxies `core`'s CreateUser endpoint, adding in a dummy token. Admittedly not the most secure implementation ever, but sue me it's 3AM now. Requires a code and nonce supplied from querying the `/init` endpoint.
+
+#### Params
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | String | OTP code SMS-ed to the user. Initiated with the `/init` endpoint. | ✓ |
+| nonce | String | Nonce returned by the `/init` endpoint response. | ✓ | 
 
 #### Body
 
@@ -148,4 +155,5 @@ Created user object.
 | Code | Description |
 | ---- | ----------- |
 | 400 | Error parsing submitted body, or fields first_name or last_name have a length of 0 |
+| 401 | Supplied OTP is invalid |
 | 500 | Error occurred inserting entry into database/proxying |
