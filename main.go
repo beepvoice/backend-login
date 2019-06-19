@@ -200,6 +200,14 @@ func VerifyCode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
   }
 
+  // Delete nonce
+  _, err = redisClient.Del(req.Code + "nonce").Result()
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+  }
+
+  // Check nonce
   if req.Nonce != storedNonce {
     http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
@@ -207,6 +215,13 @@ func VerifyCode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
   // Get stored phone number
   phoneNumber, err := redisClient.Get(req.Code + "phone").Result()
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+  }
+
+  // Delete stored phone number
+  _, err = redisClient.Del(req.Code + "phone").Result()
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -289,8 +304,23 @@ func CreateUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
   }
 
+  // Delete nonce
+  _, err = redisClient.Del(code + "nonce").Result()
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+  }
+
+  // Check nonce
   if nonce != storedNonce {
     http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+  }
+
+  // Delete phone number
+  _, err = redisClient.Del(code + "phone").Result()
+  if err != nil {
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
   }
 
