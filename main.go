@@ -3,11 +3,13 @@ package main
 import (
   "crypto/rand"
   "crypto/tls"
+  "crypto/rsa"
   "database/sql"
   "encoding/hex"
   "encoding/json"
   "fmt"
   "io"
+  "io/ioutil"
   "log"
   "math/big"
   "net/http"
@@ -27,9 +29,10 @@ import (
 var listen string
 var postgres string
 var redisHost string
-var secret []byte
 var ttl time.Duration
 var messagingSID string
+
+var privateKey *rsa.PrivateKey
 
 var dummyToken string
 var coreURL string
@@ -47,7 +50,6 @@ func main() {
     log.Fatal("Error loading .env file")
   }
   listen = os.Getenv("LISTEN")
-  secret = []byte(os.Getenv("SECRET"))
   postgres = os.Getenv("POSTGRES")
   redisHost = os.Getenv("REDIS")
 
@@ -62,6 +64,17 @@ func main() {
 
   dummyToken = "{\"userid\":\"dummy\",\"clientid\":\"dummy\"}"
   coreURL = os.Getenv("CORE_URL")
+
+  // Load RSA private key
+  privateKeyBytes, err := ioutil.ReadFile("key")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  privateKey, err = jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
+  if err != nil {
+    log.Fatal(err)
+  }
 
   // Postgres
   log.Printf("connecting to postgres %s", postgres)
@@ -251,12 +264,12 @@ func VerifyCode(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
   }
 
   // Generate JWT
-  token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims {
+  token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims {
     "userid": userID,
     "clientid": req.ClientId,
   })
 
-  tokenString, err := token.SignedString(secret)
+  tokenString, err := token.SignedString(privateKey)
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
     return
@@ -279,12 +292,12 @@ func Login(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
 	}
 
-  token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims {
+  token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims {
     "userid": login.ID,
     "clientid": login.Client,
   })
 
-  tokenString, err := token.SignedString(secret)
+  tokenString, err := token.SignedString(privateKey)
   if err != nil {
     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
     return
